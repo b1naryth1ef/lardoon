@@ -8,6 +8,7 @@ function ReplayItem({ replay }: { replay: Replay }) {
   const time = new Date(Date.parse(replay.recording_time));
   const measuredTime = new Date(0);
   measuredTime.setSeconds(replay.duration);
+  const parts = replay.path.split("/");
 
   return (
     <Link
@@ -16,7 +17,7 @@ function ReplayItem({ replay }: { replay: Replay }) {
     >
       <div className="flex flex-row text-lg mb-2">
         {time.toLocaleString()}
-        <span className="ml-auto">{replay.name}</span>
+        <span className="ml-auto">{parts[parts.length - 1]}</span>
       </div>
       <div className="flex flex-row">
         <a
@@ -37,7 +38,7 @@ function ReplayItem({ replay }: { replay: Replay }) {
           </div>
           <div className="flex flex-row">
             <span className="ml-auto text-gray-800 mr-2">
-              {Math.round(replay.size / 1000 / 1000)} mb
+              {Math.round(replay.size / 1024 / 1024)} mb
             </span>
             <BiHdd className="inline-flex w-5 h-5 text-gray-500" />
             {" "}

@@ -80,21 +80,22 @@ func setReplayDuration(replayId, duration int) error {
 }
 
 func createReplay(path string, referenceTime string, recordingTime string, title string, dataSource string, dataRecorder string, size int) (int, error) {
-	row, err := db.Query(`SELECT id, duration FROM replays WHERE path=?`, path)
+	row, err := db.Query(`SELECT id, duration, size FROM replays WHERE path=?`, path)
 	if err != nil {
 		return -1, err
 	}
-	defer row.Close()
 
 	if row.Next() {
 		var id int
 		var dur *int
-		err = row.Scan(&id, &dur)
+		var exSize int
+		err = row.Scan(&id, &dur, &exSize)
+		row.Close()
 		if err != nil {
 			return -1, err
 		}
 
-		if dur != nil {
+		if dur != nil && size == exSize {
 			return -1, fmt.Errorf("replay '%v' already exists", path)
 		}
 
@@ -103,6 +104,8 @@ func createReplay(path string, referenceTime string, recordingTime string, title
 			path, referenceTime, recordingTime, title, dataSource, dataRecorder, size, id,
 		)
 		return id, err
+	} else {
+		row.Close()
 	}
 
 	row, err = db.Query(`

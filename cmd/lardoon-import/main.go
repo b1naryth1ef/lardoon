@@ -32,9 +32,4 @@ func main() {
 	if err != nil {
 		fmt.Printf("error: %v", err)
 	}
-
-	// err := lardoon.ImportFile(os.Args[1])
-	// if err != nil {
-	// 	fmt.Printf("error: %v", err)
-	// }
 }

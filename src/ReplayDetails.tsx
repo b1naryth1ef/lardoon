@@ -13,7 +13,7 @@ export type ReplayObject = {
 
 export type Replay = {
   id: number;
-  name: string;
+  path: string;
   reference_time: string;
   recording_time: string;
   title: string;
