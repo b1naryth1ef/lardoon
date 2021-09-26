@@ -20,7 +20,7 @@ func main() {
 			return err
 		}
 		if strings.HasSuffix(path, ".acmi") {
-			err := lardoon.ImportFile(path, false)
+			err := lardoon.ImportFile(path)
 			if err != nil {
 				return err
 			}

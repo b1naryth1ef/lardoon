@@ -3,6 +3,8 @@ package lardoon
 import (
 	"fmt"
 	"net/http"
+	"path/filepath"
+	"strconv"
 
 	"github.com/alioygur/gores"
 	"github.com/go-chi/chi/v5"
@@ -13,40 +15,42 @@ import (
 type HTTPServer struct {
 }
 
-func (h *HTTPServer) getReplay(w http.ResponseWriter, r *http.Request) {
+func getRequestReplay(w http.ResponseWriter, r *http.Request) *ReplayWithObjects {
 	replayId := chi.URLParam(r, "id")
-
 	row, err := db.Query(`SELECT * FROM replays WHERE id=?`, replayId)
 	if err != nil {
 		gores.Error(w, 500, fmt.Sprintf("error: %v", err))
+		return nil
 	}
 	defer row.Close()
 
 	if !row.Next() {
 		gores.Error(w, 404, "replay not found")
-		return
+		return nil
 	}
 
 	var replay ReplayWithObjects
 	err = row.Scan(
 		&replay.Id,
-		&replay.Name,
+		&replay.Path,
 		&replay.ReferenceTime,
 		&replay.RecordingTime,
 		&replay.Title,
 		&replay.DataSource,
 		&replay.DataRecorder,
+		&replay.Duration,
+		&replay.Size,
 	)
 	if err != nil {
 		gores.Error(w, 500, fmt.Sprintf("error: %v", err))
-		return
+		return nil
 	}
 
 	replay.Objects = make([]*ReplayObject, 0)
 	rows, err := db.Query(`SELECT * FROM replay_objects WHERE replay_id = ?`, replay.Id)
 	if err != nil {
 		gores.Error(w, 500, fmt.Sprintf("error: %v", err))
-		return
+		return nil
 	}
 	defer rows.Close()
 
@@ -55,6 +59,7 @@ func (h *HTTPServer) getReplay(w http.ResponseWriter, r *http.Request) {
 		err := rows.Scan(
 			&object.ReplayId,
 			&object.Id,
+			&object.Types,
 			&object.Name,
 			&object.Pilot,
 			&object.CreatedOffset,
@@ -62,16 +67,74 @@ func (h *HTTPServer) getReplay(w http.ResponseWriter, r *http.Request) {
 		)
 		if err != nil {
 			gores.Error(w, 500, fmt.Sprintf("error: %v", err))
-			return
+			return nil
 		}
 		replay.Objects = append(replay.Objects, &object)
+	}
+
+	return &replay
+}
+
+func (h *HTTPServer) downloadReplay(w http.ResponseWriter, r *http.Request) {
+	replay := getRequestReplay(w, r)
+	if replay == nil {
+		return
+	}
+
+	start := 0
+	end := -1
+
+	startKeys, ok := r.URL.Query()["start"]
+	if ok && len(startKeys) == 1 {
+		startInt, err := strconv.ParseInt(startKeys[0], 10, 64)
+		if err != nil {
+			gores.Error(w, 400, "invalid start position")
+			return
+		}
+		if startInt > 0 {
+			start = int(startInt)
+		}
+	}
+
+	endKeys, ok := r.URL.Query()["end"]
+	if start != -1 && ok && len(startKeys) == 1 {
+		endInt, err := strconv.ParseInt(endKeys[0], 10, 64)
+		if err != nil || endInt < 0 || int(endInt) < start {
+			gores.Error(w, 400, "invalid end position")
+			return
+		}
+		end = int(endInt)
+	}
+
+	w.Header().Set("Content-Type", "text/plain")
+
+	name := filepath.Base(replay.Path)
+	if start == 0 && end == -1 {
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", name))
+		http.ServeFile(w, r, replay.Path)
+	} else {
+		data, err := trimTacView(replay.Path, start, end)
+		if err != nil {
+			gores.Error(w, 400, "failed to trim tacview")
+			return
+		}
+
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v-%v-%v.acmi", replay.Title, start, end))
+		w.Write(data)
+	}
+}
+
+func (h *HTTPServer) getReplay(w http.ResponseWriter, r *http.Request) {
+	replay := getRequestReplay(w, r)
+	if replay == nil {
+		return
 	}
 
 	gores.JSON(w, 200, replay)
 }
 
 func (h *HTTPServer) listReplays(w http.ResponseWriter, r *http.Request) {
-	rows, err := db.Query(`SELECT * FROM replays`)
+	rows, err := db.Query(`SELECT * FROM replays ORDER BY recording_time DESC`)
 	if err != nil {
 		gores.Error(w, 500, fmt.Sprintf("error: %v", err))
 		return
@@ -83,12 +146,14 @@ func (h *HTTPServer) listReplays(w http.ResponseWriter, r *http.Request) {
 		var replay Replay
 		err := rows.Scan(
 			&replay.Id,
-			&replay.Name,
+			&replay.Path,
 			&replay.ReferenceTime,
 			&replay.RecordingTime,
 			&replay.Title,
 			&replay.DataSource,
 			&replay.DataRecorder,
+			&replay.Duration,
+			&replay.Size,
 		)
 		if err != nil {
 			gores.Error(w, 500, fmt.Sprintf("error: %v", err))
@@ -113,8 +178,7 @@ func (h *HTTPServer) Run(bind string) error {
 
 	r.Get("/api/replay", h.listReplays)
 	r.Get("/api/replay/{id}", h.getReplay)
-	// r.Get("/api/replay/download/{name}", h.downloadReplay)
-	// r.Post("/api/replay/download/{name}", h.downloadReplay)
+	r.Get("/api/replay/{id}/download", h.downloadReplay)
 
 	return http.ListenAndServe(bind, r)
 }

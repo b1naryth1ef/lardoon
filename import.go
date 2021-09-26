@@ -15,13 +15,25 @@ var nonHumanSlotRe = regexp.MustCompile(`([A-Z\d]+)#\d\d\d-\d\d`)
 
 type objectData struct {
 	Id            uint64
+	Types         string
 	Name          string
 	Pilot         string
 	CreatedOffset int
 	DeletedOffset int
 }
 
-func ImportFile(target string, force bool) error {
+func ImportFile(target string) error {
+	var err error
+	target, err = filepath.Abs(target)
+	if err != nil {
+		return err
+	}
+
+	stat, err := os.Stat(target)
+	if err != nil {
+		return err
+	}
+
 	file, err := os.Open(target)
 	if err != nil {
 		return err
@@ -33,16 +45,15 @@ func ImportFile(target string, force bool) error {
 	}
 
 	rootObject := reader.Header.InitialTimeFrame.Get(0)
-	targetName := filepath.Base(target)
 
 	replayId, err := createReplay(
-		targetName,
+		target,
 		reader.Header.ReferenceTime.String(),
 		rootObject.Get("RecordingTime").Value,
 		rootObject.Get("Title").Value,
 		rootObject.Get("DataSource").Value,
 		rootObject.Get("DataRecorder").Value,
-		force,
+		int(stat.Size()),
 	)
 	if err != nil {
 		return err
@@ -52,13 +63,14 @@ func ImportFile(target string, force bool) error {
 		return nil
 	}
 
-	log.Printf("Importing replay %v (#%v)", targetName, replayId)
+	log.Printf("Importing replay %v (#%v)", target, replayId)
 
 	timeFrames := make(chan *tacview.TimeFrame)
 
 	objects := make(map[uint64]*objectData)
 	done := make(chan struct{})
 	var lastFrame int
+	var firstFrame int
 
 	go func() {
 		defer close(done)
@@ -68,7 +80,12 @@ func ImportFile(target string, force bool) error {
 			if !ok {
 				return
 			}
-			lastFrame = int(tf.Offset)
+			if int(tf.Offset) > 0 && int(tf.Offset) < firstFrame {
+				firstFrame = int(tf.Offset)
+			}
+			if int(tf.Offset) > lastFrame {
+				lastFrame = int(tf.Offset)
+			}
 
 			for _, object := range tf.Objects {
 				_, exists := objects[object.Id]
@@ -77,6 +94,7 @@ func ImportFile(target string, force bool) error {
 					err := createReplayObject(
 						replayId,
 						int(object.Id),
+						objects[object.Id].Types,
 						objects[object.Id].Name,
 						objects[object.Id].Pilot,
 						objects[object.Id].CreatedOffset,
@@ -88,26 +106,29 @@ func ImportFile(target string, force bool) error {
 					delete(objects, object.Id)
 				} else if !exists {
 					types := object.Get("Type")
-					if types != nil && strings.Contains(types.Value, "Air") && strings.Contains(types.Value, "FixedWing") {
-						name := object.Get("Name").Value
+					if types != nil {
+						if strings.Contains(types.Value, "Air") && strings.Contains(types.Value, "FixedWing") {
+							name := object.Get("Name").Value
 
-						pilotProp := object.Get("Pilot")
-						if pilotProp == nil {
-							continue
-						}
-						pilot := pilotProp.Value
-						group := object.Get("Group").Value
+							pilotProp := object.Get("Pilot")
+							if pilotProp == nil {
+								continue
+							}
+							pilot := pilotProp.Value
+							group := object.Get("Group").Value
 
-						result := nonHumanSlotRe.FindAllStringSubmatch(pilot, -1)
-						if len(result) > 0 && strings.HasPrefix(group, result[0][1]) {
-							continue
-						}
+							result := nonHumanSlotRe.FindAllStringSubmatch(pilot, -1)
+							if len(result) > 0 && strings.HasPrefix(group, result[0][1]) {
+								continue
+							}
 
-						objects[object.Id] = &objectData{
-							Id:            object.Id,
-							Name:          name,
-							Pilot:         pilot,
-							CreatedOffset: int(tf.Offset),
+							objects[object.Id] = &objectData{
+								Id:            object.Id,
+								Name:          name,
+								Pilot:         pilot,
+								Types:         types.Value,
+								CreatedOffset: int(tf.Offset),
+							}
 						}
 					}
 				}
@@ -122,6 +143,7 @@ func ImportFile(target string, force bool) error {
 		err := createReplayObject(
 			replayId,
 			int(object.Id),
+			object.Types,
 			object.Name,
 			object.Pilot,
 			object.CreatedOffset,
@@ -131,6 +153,9 @@ func ImportFile(target string, force bool) error {
 			return err
 		}
 	}
+	if err != nil {
+		return err
+	}
 
-	return err
+	return setReplayDuration(replayId, lastFrame-firstFrame)
 }
