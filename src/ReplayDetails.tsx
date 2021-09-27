@@ -111,7 +111,7 @@ export default function ReplayDetails({ replayId }: { replayId: number }) {
   if (!selectedObjects) return <></>;
 
   return (
-    <div className="flex flex-col h-full mx-auto w-1/3">
+    <div className="flex flex-col h-full mx-auto md:w-1/3 w-full">
       <div className="p-2">
         <input
           className="border border-gray-300 rounded-sm form-input w-full h-8"

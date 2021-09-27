@@ -56,9 +56,9 @@ function ReplayList() {
 
   if (!data) return <></>;
   return (
-    <div className="m-auto w-1/4">
+    <div className="m-auto md:w-1/4 w-full">
       <div
-        className="border border-gray-300 bg-gray-200 rounded-sm p-2 shadow-sm flex flex-col items-center gap-2"
+        className="border border-gray-300 bg-gray-200 rounded-sm p-2 shadow-sm flex flex-col items-center gap-2 md:m-4"
       >
         {data.map((it) => <ReplayItem key={it.id} replay={it} />)}
       </div>
