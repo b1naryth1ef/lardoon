@@ -2,7 +2,6 @@ package lardoon
 
 import (
 	"database/sql"
-	"fmt"
 	"os"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -96,7 +95,7 @@ func createReplay(path string, referenceTime string, recordingTime string, title
 		}
 
 		if dur != nil && size == exSize {
-			return -1, fmt.Errorf("replay '%v' already exists", path)
+			return -1, nil
 		}
 
 		_, err = db.Exec(
