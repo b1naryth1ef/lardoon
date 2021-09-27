@@ -7,14 +7,6 @@ import (
 	"github.com/b1naryth1ef/jambon/tacview"
 )
 
-type CloseBuffer struct {
-	*bytes.Buffer
-}
-
-func (c *CloseBuffer) Close() error {
-	return nil
-}
-
 func trimTacView(path string, start, end int) ([]byte, error) {
 	file, err := os.Open(path)
 	if err != nil {
