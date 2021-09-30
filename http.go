@@ -1,12 +1,14 @@
 package lardoon
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
 	"net/http"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/alioygur/gores"
 	"github.com/go-chi/chi/v5"
@@ -75,6 +77,27 @@ func getRequestReplay(w http.ResponseWriter, r *http.Request) *ReplayWithObjects
 	}
 
 	return &replay
+}
+
+func (h *HTTPServer) serveEmbeddedFile(path string, w http.ResponseWriter, r *http.Request) {
+	f, err := static.ReadFile("dist/" + path)
+	if err != nil {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+
+	fileName := filepath.Base(path)
+	http.ServeContent(w, r, fileName, time.Now(), bytes.NewReader(f))
+}
+
+func (h *HTTPServer) serveEmbeddedStaticAssets(w http.ResponseWriter, r *http.Request) {
+	param := chi.URLParam(r, "*")
+	ext := filepath.Ext(param)
+	if param == "" || (ext != ".js" && ext != ".css") {
+		param = "index.html"
+	}
+
+	h.serveEmbeddedFile(param, w, r)
 }
 
 func (h *HTTPServer) downloadReplay(w http.ResponseWriter, r *http.Request) {
@@ -192,6 +215,10 @@ func (h *HTTPServer) Run(bind string) error {
 		MaxAge:           300,
 	}))
 
+	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
+		h.serveEmbeddedFile("index.html", w, r)
+	})
+	r.Get("/static/*", h.serveEmbeddedStaticAssets)
 	r.Get("/api/replay", h.listReplays)
 	r.Get("/api/replay/{id}", h.getReplay)
 	r.Get("/api/replay/{id}/download", h.downloadReplay)
