@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from "react";
 import { BiDownload } from "react-icons/bi";
+import { Link } from "react-router-dom";
 import useFetch, { CachePolicies } from "use-http";
+import { searchStore } from "./App";
 
 export type ReplayObject = {
   id: number;
@@ -92,7 +94,9 @@ export default function ReplayDetails({ replayId }: { replayId: number }) {
     [],
   );
 
-  const [search, setSearch] = useState<string>("");
+  const [search, setSearch] = searchStore(
+    (state) => [state.value, state.setValue],
+  );
   const [objectId, setObjectId] = useState<number | null>(null);
 
   const selectedObjects = useMemo(() => {
@@ -112,13 +116,19 @@ export default function ReplayDetails({ replayId }: { replayId: number }) {
 
   return (
     <div className="flex flex-col h-full mx-auto md:w-1/3 w-full">
-      <div className="p-2">
+      <div className="p-2 flex flex-row gap-2">
         <input
           className="border border-gray-300 rounded-sm form-input w-full h-8"
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+        <Link
+          to="/"
+          className="p-1 text-gray-700 bg-gray-200 border-gray-400 rounded-sm hover:text-blue-500"
+        >
+          Back
+        </Link>
       </div>
       <div className="flex flex-col gap-2 p-2">
         {selectedObjects.map((it) => (

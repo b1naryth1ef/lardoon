@@ -1,10 +1,12 @@
 package lardoon
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/alioygur/gores"
 	"github.com/go-chi/chi/v5"
@@ -134,7 +136,21 @@ func (h *HTTPServer) getReplay(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *HTTPServer) listReplays(w http.ResponseWriter, r *http.Request) {
-	rows, err := db.Query(`SELECT * FROM replays ORDER BY recording_time DESC`)
+	var rows *sql.Rows
+	var err error
+
+	filterKeys, ok := r.URL.Query()["filter"]
+	if ok && len(filterKeys) == 1 {
+
+		rows, err = db.Query(`
+		SELECT * FROM replays r WHERE r.id IN (
+			SELECT ro.replay_id FROM replay_objects ro
+			WHERE LOWER(ro.pilot) LIKE ?
+		) ORDER BY recording_time DESC`, "%"+strings.ToLower(filterKeys[0])+"%")
+	} else {
+		rows, err = db.Query(`SELECT * FROM replays ORDER BY recording_time DESC`)
+	}
+
 	if err != nil {
 		gores.Error(w, 500, fmt.Sprintf("error: %v", err))
 		return

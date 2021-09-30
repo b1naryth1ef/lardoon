@@ -1,8 +1,21 @@
-import React from "react";
+import React, { useState } from "react";
 import { BiDownload, BiHdd, BiTimer } from "react-icons/bi";
 import { Link, Route, Switch } from "react-router-dom";
 import useFetch, { CachePolicies } from "use-http";
+import create from "zustand";
 import ReplayDetails, { Replay } from "./ReplayDetails";
+
+export const searchStore = create<
+  { value: string; setValue: (value: string) => void }
+>((set) => {
+  return {
+    value: "",
+    setValue: (value: string) =>
+      set((state) => {
+        return { ...state, value };
+      }),
+  };
+});
 
 function ReplayItem({ replay }: { replay: Replay }) {
   const time = new Date(Date.parse(replay.recording_time));
@@ -50,13 +63,30 @@ function ReplayItem({ replay }: { replay: Replay }) {
 }
 
 function ReplayList() {
-  const { data } = useFetch<Array<Replay>>("/api/replay", {
-    cachePolicy: CachePolicies.NO_CACHE,
-  }, []);
+  const [search, setSearch] = searchStore(
+    (state) => [state.value, state.setValue],
+  );
+  const { data } = useFetch<Array<Replay>>(
+    `/api/replay${
+      search !== "" ? `?filter=${encodeURIComponent(search)}` : ""
+    }`,
+    {
+      cachePolicy: CachePolicies.NO_CACHE,
+    },
+    [search],
+  );
 
   if (!data) return <></>;
   return (
     <div className="m-auto md:w-1/4 w-full">
+      <div className="p-2">
+        <input
+          className="border border-gray-300 rounded-sm form-input w-full h-8"
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
       <div
         className="border border-gray-300 bg-gray-200 rounded-sm p-2 shadow-sm flex flex-col items-center gap-2 md:m-4"
       >
