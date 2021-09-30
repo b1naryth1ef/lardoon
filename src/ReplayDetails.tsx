@@ -118,7 +118,7 @@ export default function ReplayDetails({ replayId }: { replayId: number }) {
     <div className="flex flex-col h-full mx-auto md:w-1/3 w-full">
       <div className="p-2 flex flex-row gap-2">
         <input
-          className="border border-gray-300 rounded-sm form-input w-full h-8"
+          className="border border-gray-300 rounded-sm form-input w-full h-8 p-0.5"
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}

@@ -22,6 +22,31 @@ type objectData struct {
 	DeletedOffset int
 }
 
+func ImportPath(path string) error {
+	stat, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+
+	if stat.IsDir() {
+		return filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if strings.HasSuffix(path, ".acmi") {
+				err := ImportFile(path)
+				if err != nil {
+					return err
+				}
+			}
+
+			return nil
+		})
+	}
+
+	return ImportFile(path)
+}
+
 func ImportFile(target string) error {
 	var err error
 	target, err = filepath.Abs(target)

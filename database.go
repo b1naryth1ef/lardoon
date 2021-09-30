@@ -2,7 +2,6 @@ package lardoon
 
 import (
 	"database/sql"
-	"os"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -127,20 +126,13 @@ func createReplay(path string, referenceTime string, recordingTime string, title
 	return id, nil
 }
 
-func init() {
-	dbPath := os.Getenv("LARDOON_DB_PATH")
-	if dbPath == "" {
-		dbPath = "./lardoon.db"
-	}
-
+func InitDatabase(dbPath string) error {
 	var err error
 	db, err = sql.Open("sqlite3", dbPath)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	_, err = db.Exec(schema)
-	if err != nil {
-		panic(err)
-	}
+	return err
 }
