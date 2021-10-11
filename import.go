@@ -132,7 +132,7 @@ func ImportFile(target string) error {
 				} else if !exists {
 					types := object.Get("Type")
 					if types != nil {
-						if strings.Contains(types.Value, "Air") && strings.Contains(types.Value, "FixedWing") {
+						if strings.Contains(types.Value, "Air") && (strings.Contains(types.Value, "FixedWing") || strings.Contains(types.Value, "Rotorcraft")) {
 							name := object.Get("Name").Value
 
 							pilotProp := object.Get("Pilot")
