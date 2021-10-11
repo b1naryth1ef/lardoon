@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { BiDownload, BiHdd, BiTimer } from "react-icons/bi";
 import { Link, Route, Switch } from "react-router-dom";
 import useFetch, { CachePolicies } from "use-http";
@@ -62,18 +62,40 @@ function ReplayItem({ replay }: { replay: Replay }) {
   );
 }
 
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(
+    () => {
+      const handler = setTimeout(() => {
+        setDebouncedValue(value);
+      }, delay);
+
+      return () => {
+        clearTimeout(handler);
+      };
+    },
+    [value, delay],
+  );
+
+  return debouncedValue;
+}
+
 function ReplayList() {
   const [search, setSearch] = searchStore(
     (state) => [state.value, state.setValue],
   );
+  const debouncedSearch = useDebounce(search, 500);
   const { data } = useFetch<Array<Replay>>(
     `/api/replay${
-      search !== "" ? `?filter=${encodeURIComponent(search)}` : ""
+      debouncedSearch !== ""
+        ? `?filter=${encodeURIComponent(debouncedSearch)}`
+        : ""
     }`,
     {
       cachePolicy: CachePolicies.NO_CACHE,
     },
-    [search],
+    [debouncedSearch],
   );
 
   if (!data) return <></>;
