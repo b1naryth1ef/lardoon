@@ -25,12 +25,6 @@ export type Replay = {
   size: number;
 };
 
-type DownloadRequest = {
-  object_ids?: Array<number>;
-  before?: number;
-  after?: number;
-};
-
 function ReplayObject(
   { object, active, setActive }: {
     object: ReplayObject;
@@ -85,8 +79,27 @@ function ReplayObject(
   );
 }
 
+function ReplayDescription({ replay }: { replay: Replay }) {
+  const time = new Date(Date.parse(replay.recording_time));
+
+  return (
+    <div
+      className="border border-blue-500 bg-blue-200 p-2 flex flex-col m-2"
+    >
+      <div className="flex flex-row items-center">
+        <h1 className="text-2xl font-bold">
+          {replay.title}
+        </h1>
+        <div className="text-gray-800 ml-auto">
+          {time.toLocaleString()}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ReplayDetails({ replayId }: { replayId: number }) {
-  const { data } = useFetch<Replay & { objects: Array<ReplayObject> }>(
+  const { data: replay } = useFetch<Replay & { objects: Array<ReplayObject> }>(
     `/api/replay/${replayId}`,
     {
       cachePolicy: CachePolicies.NO_CACHE,
@@ -100,23 +113,24 @@ export default function ReplayDetails({ replayId }: { replayId: number }) {
   const [objectId, setObjectId] = useState<number | null>(null);
 
   const selectedObjects = useMemo(() => {
-    if (!data) {
+    if (!replay) {
       return null;
     }
 
-    return data.objects.sort((a, b) => a.created_offset - b.created_offset)
+    return replay.objects.sort((a, b) => a.created_offset - b.created_offset)
       .filter((it) =>
         search === "" ||
         (it.name.toLowerCase().includes(search.toLowerCase()) ||
           it.pilot.toLowerCase().includes(search.toLowerCase()))
       );
-  }, [data, search]);
+  }, [replay, search]);
 
-  if (!selectedObjects) return <></>;
+  if (!selectedObjects || !replay) return <></>;
 
   return (
     <div className="flex flex-col h-full mx-auto md:w-1/3 w-full">
-      <div className="p-2 flex flex-row gap-2">
+      <ReplayDescription replay={replay} />
+      <div className="p-2 flex flex-row gap-1">
         <input
           className="border border-gray-300 rounded-sm form-input w-full h-8 p-0.5"
           type="text"
@@ -129,8 +143,15 @@ export default function ReplayDetails({ replayId }: { replayId: number }) {
         >
           Back
         </Link>
+        <a
+          href={`/api/replay/${replay.id}/download`}
+          onClick={(e) => e.stopPropagation()}
+          className="p-1 text-green-700 bg-green-200 border-green-400 rounded-sm hover:text-green-500"
+        >
+          Download
+        </a>
       </div>
-      <div className="flex flex-col gap-2 p-2">
+      <div className="flex flex-col gap-1 p-2">
         {selectedObjects.map((it) => (
           <ReplayObject
             key={it.id}
