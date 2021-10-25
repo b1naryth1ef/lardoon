@@ -5,9 +5,6 @@ const path = require("path");
 module.exports = {
   mode: "production",
   entry: "./src/index.tsx",
-  devServer: {
-    historyApiFallback: true,
-  },
   output: {
     filename: "[name].[contenthash].js",
     path: path.resolve(__dirname, "dist"),
@@ -48,8 +45,18 @@ module.exports = {
     ],
   },
   devServer: {
-    contentBase: path.resolve(__dirname, "dist"),
-    watchContentBase: true,
+    static: [
+      {
+        directory: path.join(__dirname, "dist"),
+        watch: true,
+        publicPath: "/static/",
+      },
+    ],
+    historyApiFallback: {
+      rewrites: [
+        { from: /./, to: "/static/index.html" },
+      ],
+    },
     proxy: {
       "/api": "http://localhost:3883",
     },
