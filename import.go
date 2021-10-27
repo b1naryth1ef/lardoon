@@ -33,10 +33,16 @@ func ImportPath(path string) error {
 			if err != nil {
 				return err
 			}
+
+			if info.Size() == 0 {
+				log.Printf("Skipping empty file %v", path)
+				return nil
+			}
+
 			if strings.HasSuffix(path, ".acmi") {
 				err := ImportFile(path)
 				if err != nil {
-					return err
+					log.Printf("Failed to process path %v: %v", path, err)
 				}
 			}
 
