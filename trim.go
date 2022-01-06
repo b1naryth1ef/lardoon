@@ -1,29 +1,29 @@
 package lardoon
 
 import (
-	"bytes"
+	"io"
 	"os"
 
 	"github.com/b1naryth1ef/jambon/tacview"
 )
 
-func trimTacView(path string, start, end int) ([]byte, error) {
+func trimTacView(path string, writer io.Writer, start, end int) error {
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	reader, err := tacview.NewParser(file)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	buff := bytes.NewBuffer([]byte{})
-	writer := tacview.NewRawWriter(buff)
+	tacWriter := tacview.NewRawWriter(writer)
 
-	err = tacview.TrimRaw(reader, writer, float64(start), float64(end))
+	err = tacview.TrimRaw(reader, tacWriter, float64(start), float64(end))
 	if err != nil {
-		return nil, err
+		return err
+
 	}
-	return buff.Bytes(), nil
+	return nil
 }

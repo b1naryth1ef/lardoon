@@ -138,14 +138,12 @@ func (h *HTTPServer) downloadReplay(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", name))
 		http.ServeFile(w, r, replay.Path)
 	} else {
-		data, err := trimTacView(replay.Path, start, end)
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v-%v-%v.acmi", replay.Title, start, end))
+		err := trimTacView(replay.Path, w, start, end)
 		if err != nil {
 			gores.Error(w, 400, "failed to trim tacview")
 			return
 		}
-
-		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v-%v-%v.acmi", replay.Title, start, end))
-		w.Write(data)
 	}
 }
 
